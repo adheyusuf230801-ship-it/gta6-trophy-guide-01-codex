@@ -11,21 +11,21 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { margin: 0; background: radial-gradient(ellipse at top, #30203f, var(--night) 45rem); color: var(--ink); }
+body { margin: 0; color: var(--ink); background: radial-gradient(ellipse at top, #30203f, var(--night) 45rem); }
 .wrap { width: min(1180px, calc(100% - 56px)); margin-inline: auto; }
-.skip { position: fixed; top: -5em; left: 1em; z-index: 2; color: var(--night); background: var(--mint); padding: .5em; }
+.skip { position: fixed; top: -6em; left: 1em; z-index: 3; padding: .5em; color: var(--night); background: var(--mint); }
 .skip:focus { top: 1em; }
 .masthead, footer {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   gap: 1rem;
   padding-block: 17px;
   color: var(--muted);
   font: 700 .76rem/1.5 ui-monospace, monospace;
   letter-spacing: .14em;
 }
-.masthead strong { color: var(--ink); font-size: .9rem; }
+.masthead strong { font-size: .9rem; color: var(--ink); }
 .masthead strong span, em { color: var(--pink); }
 .hero {
   position: relative;
@@ -40,18 +40,19 @@ body { margin: 0; background: radial-gradient(ellipse at top, #30203f, var(--nig
   border-radius: 18px;
   background: linear-gradient(105deg, #2b1c3b 15%, #4d2555 68%, #241833);
 }
+/* A striped sunset and neon horizon, made entirely with CSS. */
 .hero::before {
   content: "";
   position: absolute;
   z-index: -1;
-  width: 170px;
-  aspect-ratio: 1;
   top: 12px;
   right: 31%;
+  width: 170px;
+  aspect-ratio: 1;
   border-radius: 50%;
+  opacity: .7;
   background: linear-gradient(#ffd097, #f36da7 70%, #c64187);
   mask-image: linear-gradient(#000 57%, transparent 57% 61%, #000 61% 68%, transparent 68% 73%, #000 73% 79%, transparent 79% 85%, #000 85% 90%, transparent 90% 95%, #000 95%);
-  opacity: .7;
 }
 .hero::after {
   content: "";
@@ -82,7 +83,7 @@ progress::-moz-progress-bar { background: linear-gradient(90deg, var(--pink), va
 .bronze { color: #ffc3a5; }
 .toolbar, .section-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .toolbar { margin-block: 13px; }
-.toolbar nav, .backup { display: flex; gap: 7px; flex-wrap: wrap; }
+.toolbar nav, .backup { display: flex; flex-wrap: wrap; gap: 7px; }
 button, select, input { font: inherit; }
 button, select, input[type="search"] { color: var(--ink); background: #1a1427; border: 1px solid var(--line); border-radius: 8px; }
 button { padding: 7px 12px; font-size: .9rem; font-weight: 710; }
@@ -91,17 +92,8 @@ button:hover, summary:hover { color: var(--pink); border-color: var(--pink); }
 button[aria-pressed="true"] { color: #2a1426; background: var(--pink); border-color: var(--pink); }
 :focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
 input[type="checkbox"] { accent-color: var(--mint); width: 18px; height: 18px; margin: 2px 0 0; }
-#status:not(:empty) { color: var(--mint); padding: 0 0 10px; }
-.filters {
-  display: grid;
-  grid-template-columns: minmax(150px, 2fr) 1fr 1fr auto;
-  align-items: end;
-  gap: 13px;
-  padding: 12px 15px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 11px;
-}
+#status:not(:empty) { color: var(--mint); padding-bottom: 10px; }
+.filters { display: grid; grid-template-columns: minmax(150px, 2fr) 1fr 1fr auto; align-items: end; gap: 13px; padding: 12px 15px; background: var(--panel); border: 1px solid var(--line); border-radius: 11px; }
 .filters label { display: grid; gap: 4px; min-width: 0; color: var(--muted); font-size: .86rem; font-weight: 680; }
 .filters label.toggle { display: flex; align-items: center; gap: 8px; min-height: 38px; }
 .filters select, .filters input[type="search"] { width: 100%; min-width: 0; padding: 6px 10px; height: 38px; }
