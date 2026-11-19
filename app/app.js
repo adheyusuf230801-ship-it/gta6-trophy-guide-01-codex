@@ -1,261 +1,256 @@
 'use strict';
 
-const get = id => document.getElementById(id);
-const shot = new URLSearchParams(location.search).get('shot');
-const preview = ['checklist', 'guide', 'roadmap', 'filters'].includes(shot);
-const storageKey = 'leonida-after-dark.progress.v1';
-const openGuides = new Set(shot === 'guide' ? [17] : []);
-let trophies = [];
-let knownIds = new Set();
-let earned = new Set();
-let spoilers = false;
-
+const byId = id => document.getElementById(id);
+const shotName = new URLSearchParams(location.search).get('shot');
+const isShot = ['checklist', 'guide', 'roadmap', 'filters'].includes(shotName);
+const progressKey = 'leonida-after-dark.progress.v1';
+const expandedGuides = new Set(shotName === 'guide' ? [17] : []);
+let catalog = [];
+let validIds = new Set();
+let earnedIds = new Set();
+let hideStory = false;
 window.__shotReady = false;
 
-function element(tag, content = '', className = '') {
+function makeNode(tag, text = '', css = '') {
   const node = document.createElement(tag);
-  node.textContent = content;
-  if (className) node.className = className;
+  node.textContent = text;
+  if (css) node.className = css;
   return node;
 }
 
-function report(message) {
-  get('status').textContent = message;
+function announce(message) {
+  byId('status').textContent = message;
 }
 
-function backup() {
-  return { version: 1, earned: [...earned].sort((a, b) => a - b), spoilers };
+function progressSnapshot() {
+  return { version: 1, earned: [...earnedIds].sort((a, b) => a - b), spoilers: hideStory };
 }
 
-function restore(data) {
-  if (data?.version !== 1 || typeof data.spoilers !== 'boolean' ||
-      !Array.isArray(data.earned) || !data.earned.every(id => knownIds.has(id))) {
-    throw new Error('Invalid progress backup');
+function applySnapshot(value) {
+  if (!value || value.version !== 1 || typeof value.spoilers !== 'boolean' ||
+      !Array.isArray(value.earned) || value.earned.length > 55 ||
+      !value.earned.every(id => Number.isInteger(id) && validIds.has(id))) {
+    throw new Error('Unrecognized progress file');
   }
-  earned = new Set(data.earned);
-  spoilers = data.spoilers;
+  // Validate the entire payload before changing either piece of saved state.
+  earnedIds = new Set(value.earned);
+  hideStory = value.spoilers;
 }
 
-function save() {
-  if (preview) return;
+function persistProgress() {
+  if (isShot) return;
   try {
-    localStorage.setItem(storageKey, JSON.stringify(backup()));
+    localStorage.setItem(progressKey, JSON.stringify(progressSnapshot()));
   } catch {
-    report('Browser storage is unavailable. Export a backup to keep your progress.');
+    announce('Browser storage is unavailable. Export a backup to keep these checkmarks.');
   }
 }
 
-function revealStatus() {
-  const total = trophies.length;
-  get('progress').textContent = earned.size + ' of ' + total + ' earned';
-  get('percent').textContent = Math.floor(earned.size * 100 / total) + '%';
-  get('bar').max = total;
-  get('bar').value = earned.size;
+function isConcealed(trophy) {
+  return hideStory && trophy.kind === 'story' && !earnedIds.has(trophy.id);
 }
 
-function concealed(trophy) {
-  return spoilers && trophy.kind === 'story' && !earned.has(trophy.id);
+function renderProgress() {
+  const count = earnedIds.size;
+  byId('progress').textContent = count + ' of ' + catalog.length + ' earned';
+  byId('percent').textContent = Math.floor(count / catalog.length * 100) + '%';
+  byId('bar').max = catalog.length;
+  byId('bar').value = count;
 }
 
-function trophyCard(trophy) {
-  const hidden = concealed(trophy);
-  const title = hidden ? 'Hidden story trophy' : trophy.name;
-  const card = element('article', '', 'trophy');
-  card.classList.toggle('earned', earned.has(trophy.id));
+function sourceNote(trophy) {
+  return makeNode('p', 'Sources · ' + trophy.sources.join(' · '), 'source');
+}
+
+function renderTrophy(trophy) {
+  const concealed = isConcealed(trophy);
+  const visibleName = concealed ? 'Hidden story trophy' : trophy.name;
+  const card = makeNode('article', '', 'trophy');
   card.dataset.trophy = trophy.id;
-
-  const line = element('div', '', 'trophy-line');
-  const check = element('input');
-  check.type = 'checkbox';
-  check.checked = earned.has(trophy.id);
-  check.setAttribute('aria-label', 'Earned: ' + title);
-  check.addEventListener('change', () => {
-    if (check.checked) earned.add(trophy.id);
-    else earned.delete(trophy.id);
-    save();
-    revealStatus();
-    if (spoilers && trophy.kind === 'story') {
-      renderCards();
-      renderRoute();
-      (get('cards').querySelector('[data-trophy="' + trophy.id + '"] input') ?? get('search')).focus();
+  card.classList.toggle('earned', earnedIds.has(trophy.id));
+  const row = makeNode('div', '', 'trophy-line');
+  const checkbox = makeNode('input');
+  checkbox.type = 'checkbox';
+  checkbox.checked = earnedIds.has(trophy.id);
+  checkbox.setAttribute('aria-label', 'Earned: ' + visibleName);
+  checkbox.addEventListener('change', () => {
+    if (checkbox.checked) earnedIds.add(trophy.id);
+    else earnedIds.delete(trophy.id);
+    persistProgress();
+    renderProgress();
+    if (hideStory && trophy.kind === 'story') {
+      renderChecklist();
+      renderRoadmap();
+      const replacement = byId('cards').querySelector('[data-trophy="' + trophy.id + '"] input');
+      (replacement || byId('search')).focus();
     } else {
-      card.classList.toggle('earned', check.checked);
+      card.classList.toggle('earned', checkbox.checked);
     }
   });
-
-  const text = element('div');
-  text.append(element('h3', title), element('p', hidden ? 'Mark earned to reveal the name and guide.' : trophy.description));
-  const badges = element('div', '', 'badges');
-  badges.append(element('span', trophy.grade, 'badge ' + trophy.grade));
-  if (trophy.missable) badges.append(element('span', 'Missable', 'badge risk'));
-  line.append(check, text, badges);
-  card.append(line);
-
-  if (!hidden) {
-    const details = element('details');
-    details.open = openGuides.has(trophy.id);
-    details.addEventListener('toggle', () => {
-      if (!details.isConnected) return;
-      if (details.open) openGuides.add(trophy.id);
-      else openGuides.delete(trophy.id);
+  const words = makeNode('div');
+  words.append(makeNode('h3', visibleName));
+  words.append(makeNode('p', concealed ? 'Mark earned to reveal its name, description and guide.' : trophy.description));
+  const badges = makeNode('div', '', 'badges');
+  badges.append(makeNode('span', trophy.grade, 'badge ' + trophy.grade));
+  if (trophy.missable) badges.append(makeNode('span', 'Missable', 'badge risk'));
+  row.append(checkbox, words, badges);
+  card.append(row);
+  if (!concealed) {
+    const guide = makeNode('details');
+    guide.open = expandedGuides.has(trophy.id);
+    guide.append(makeNode('summary', 'Read guide'), makeNode('p', trophy.guide, 'guide'), sourceNote(trophy));
+    guide.addEventListener('toggle', () => {
+      if (!guide.isConnected) return;
+      if (guide.open) expandedGuides.add(trophy.id);
+      else expandedGuides.delete(trophy.id);
     });
-    details.append(
-      element('summary', 'Read guide'),
-      element('p', trophy.guide, 'guide'),
-      element('p', 'Source · ' + trophy.sources.join(' · '), 'source')
-    );
-    card.append(details);
+    card.append(guide);
   }
   return card;
 }
 
-function renderCards() {
-  const search = get('search').value.trim().toLocaleLowerCase('en');
-  const kind = get('kind').value;
-  const grade = get('grade').value;
-  const matches = trophies.filter(trophy =>
-    (!kind || (kind === 'missable' ? trophy.missable : trophy.kind === kind)) &&
-    (!grade || trophy.grade === grade) &&
-    (!search || (!concealed(trophy) && trophy.name.toLocaleLowerCase('en').includes(search)))
-  );
-  get('results').textContent = matches.length + ' / ' + trophies.length + ' TROPHIES';
-  get('cards').replaceChildren(...matches.map(trophyCard));
-  if (!matches.length) get('cards').append(element('p', 'No trophies match these filters. Try clearing a filter.'));
+function renderChecklist() {
+  const term = byId('search').value.trim().toLowerCase();
+  const kind = byId('kind').value;
+  const grade = byId('grade').value;
+  const visible = catalog.filter(trophy => {
+    const kindMatches = !kind || (kind === 'missable' ? trophy.missable : trophy.kind === kind);
+    const gradeMatches = !grade || trophy.grade === grade;
+    const nameMatches = !term || (!isConcealed(trophy) && trophy.name.toLowerCase().includes(term));
+    return kindMatches && gradeMatches && nameMatches;
+  });
+  byId('results').textContent = visible.length + ' / ' + catalog.length + ' TROPHIES';
+  byId('cards').replaceChildren(...visible.map(renderTrophy));
+  if (!visible.length) byId('cards').append(makeNode('p', 'No matching trophies. Clear a filter or change your search.'));
 }
 
-function showRoadmap(show) {
-  get('list-view').hidden = show;
-  get('route-view').hidden = !show;
-  get('roadmap').setAttribute('aria-pressed', show);
-  get('checklist').setAttribute('aria-pressed', !show);
+function selectRoadmap(show) {
+  byId('route-view').hidden = !show;
+  byId('list-view').hidden = show;
+  byId('roadmap').setAttribute('aria-pressed', String(show));
+  byId('checklist').setAttribute('aria-pressed', String(!show));
 }
 
-function openWarning(id) {
-  get('search').value = '';
-  get('kind').value = 'missable';
-  get('grade').value = '';
-  openGuides.add(id);
-  renderCards();
-  showRoadmap(false);
-  get('cards').querySelector('[data-trophy="' + id + '"] summary')?.focus();
+function inspectWarning(id) {
+  byId('search').value = '';
+  byId('grade').value = '';
+  byId('kind').value = 'missable';
+  expandedGuides.add(id);
+  renderChecklist();
+  selectRoadmap(false);
+  byId('cards').querySelector('[data-trophy="' + id + '"] summary')?.focus();
 }
 
-function renderRoute() {
-  const order = [3, 4, 5, 6, 7];
-  const storyNames = ids => ids.map(id => trophies.find(trophy => trophy.id === id))
-    .map(trophy => concealed(trophy) ? 'Hidden' : trophy.chapter).join(' → ');
-  const missionIds = trophies.filter(trophy => trophy.kind === 'story' && !order.includes(trophy.id));
-  const missionNames = missionIds.filter(trophy => !concealed(trophy)).map(trophy => trophy.chapter);
-  const missions = missionNames.length < missionIds.length ? [...missionNames, 'hidden missions'] : missionNames;
+function renderRoadmap() {
+  const chapters = [3, 4, 5, 6, 7].map(id => catalog.find(t => t.id === id));
+  const chapterRoute = chapters.map(t => isConcealed(t) ? 'Hidden chapter' : t.chapter).join(' → ');
+  const missions = catalog.filter(t => t.kind === 'story' && !chapters.includes(t));
+  const missionRoute = missions.map(t => isConcealed(t) ? 'Hidden mission' : t.chapter).join(', ');
   const stages = [
-    ['Play the story', storyNames(order) + '.', 'Watch for named missions along the way: ' + missions.join(', ') + '. Their chapter order is unconfirmed.'],
-    ['Finish stranger missions', 'Complete 8 strands in Leonida and finish the final jobs for Andy, Kenton, Billy, Randy and Tyrone.', 'Check Bret’s hunt and Cal’s fishing challenge as they appear.'],
-    ['Clear activities', 'Finish 250 stunts, win 20 different races and complete 50 Challenges.', 'Gold all 42 Shooting Range challenges, win at each drone venue and try every activity type.'],
-    ['Sweep for collectibles', 'Finish 3 card sets, log 100 WAiNK locations and discover 100 vehicles.', 'Meditate at every spot and use the map to finish your Leonida exploration.'],
-    ['Finish cleanup', 'Register 10 Scooter Bros vehicles and review vaults, spending and garages.', 'Reach 100% game completion and verify the remaining PS5 awards for platinum.']
+    ['Play the story', chapterRoute + '.', 'Complete the named missions as encountered: ' + missionRoute + '. Their chapter placement is unconfirmed.', 'From the first choice: keep rotating saves. Watch partner outings, VCIA, Rhinos, showroom and bowling-alley cues whenever they appear.'],
+    ['Finish stranger strands', 'Complete 8 strands across Leonida, including the final jobs for Andy, Kenton, Billy, Randy and Tyrone.', 'Check Bret’s hunt and Cal’s fishing challenge when available; neither has a confirmed unlock chapter.', 'Save before unique encounters where allowed; repeat access is not established.'],
+    ['Clear activities', '250 stunts · 20 different race wins · 50 Challenges.', 'Gold all 42 Shooting Range challenges, win at every Top Fun venue and try every activity type.', 'Watch for five enemies in one Combat Focus use, a melee drive-by and an undetected jewelry-store robbery.'],
+    ['Sweep collectibles', '3 card sets · 100 WAiNK locations · 100 discovered vehicles.', 'Meditate at every spot and fill exploration gaps across Leonida.', 'On Ocean Beach, watch for the cocktail-with-a-view cue; the exact venue is unconfirmed.'],
+    ['Audit cleanup & 100%', '5 Bank Vault escapes · an Armored Truck escape · one Illegal Operation per gang.', 'Launder $250,000, spend $100,000 in shops, buy all garages and register 10 Scooter Bros vehicles. Finish 100% game completion, then verify platinum.', 'Review every remaining PS5 award; this tracker does not calculate the game’s 100% requirements.']
   ];
-  get('stages').replaceChildren(...stages.map(([title, goal, note]) => {
-    const stage = element('li');
-    stage.append(element('h3', title), element('p', goal), element('p', note));
+  byId('stages').replaceChildren(...stages.map(([title, goal, note, warning]) => {
+    const stage = makeNode('li');
+    stage.append(makeNode('h3', title), makeNode('p', goal), makeNode('p', note), makeNode('p', warning, 'stage-warning'));
     return stage;
   }));
-
-  // Put possible one-time choices first. The list cannot establish when these cues unlock.
-  const cues = [48, 47, 37, 38, 44, 45, 46, 49, 50, 33, 34, 36, 39, 51];
-  const risks = trophies.filter(trophy => trophy.missable);
-  const priority = id => cues.includes(id) ? cues.indexOf(id) : cues.length;
-  risks.sort((a, b) => priority(a.id) - priority(b.id));
-  get('risk-count').textContent = risks.length + ' TO WATCH';
-  get('warnings').replaceChildren(...risks.map(trophy => {
-    const warning = element('article', '', 'warning');
-    const title = element('h3', trophy.name);
-    title.append(element('span', 'Missable', 'badge risk'));
-    const button = element('button', 'Open checklist guide');
-    button.type = 'button';
-    button.addEventListener('click', () => openWarning(trophy.id));
-    warning.append(title, element('p', trophy.guide), button);
+  // Priority is editorial, never a claim about the game's undisclosed encounter order.
+  const cuePriority = [48, 47, 49, 50, 33, 34, 37, 38, 45, 46, 36, 51, 39, 44];
+  const warnings = catalog.filter(t => t.missable).sort((a, b) => cuePriority.indexOf(a.id) - cuePriority.indexOf(b.id));
+  byId('risk-count').textContent = warnings.length + ' TO WATCH';
+  byId('warnings').replaceChildren(...warnings.map(trophy => {
+    const warning = makeNode('article', '', 'warning');
+    const title = makeNode('h3', trophy.name);
+    title.append(makeNode('span', 'Missable', 'badge risk'));
+    const inspect = makeNode('button', 'Open checklist guide');
+    inspect.type = 'button';
+    inspect.addEventListener('click', () => inspectWarning(trophy.id));
+    warning.append(title, makeNode('p', trophy.guide), sourceNote(trophy), inspect);
     return warning;
   }));
 }
 
-function exportProgress() {
-  const file = new Blob([JSON.stringify(backup(), null, 2)], { type: 'application/json' });
-  const address = URL.createObjectURL(file);
-  const download = element('a');
-  download.href = address;
-  download.download = 'leonida-after-dark-progress.json';
-  document.body.append(download);
-  download.click();
-  download.remove();
+function exportBackup() {
+  const blob = new Blob([JSON.stringify(progressSnapshot(), null, 2)], { type: 'application/json' });
+  const address = URL.createObjectURL(blob);
+  const link = makeNode('a');
+  link.href = address;
+  link.download = 'leonida-after-dark-progress.json';
+  document.body.append(link);
+  link.click();
+  link.remove();
   setTimeout(() => URL.revokeObjectURL(address), 1000);
-  report('Progress backup exported.');
+  announce('Progress exported as JSON.');
 }
 
-async function importProgress(event) {
+async function importBackup(event) {
   const picker = event.currentTarget;
   const file = picker.files[0];
   picker.value = '';
   if (!file) return;
   try {
-    if (file.size > 65536) throw new Error('Backup too large');
-    restore(JSON.parse(await file.text()));
+    if (file.size > 65536) throw new Error('File too large');
+    applySnapshot(JSON.parse(await file.text()));
   } catch {
-    report('Could not import this file. Choose a valid Leonida After Dark progress backup.');
+    announce('Import failed. Choose a valid Leonida After Dark progress JSON; current progress was kept.');
     return;
   }
-  report('Progress restored.');
-  save();
-  redraw();
+  announce('Progress imported.');
+  persistProgress();
+  refreshGuide();
 }
 
-function redraw() {
-  get('spoilers').checked = spoilers;
-  revealStatus();
-  renderCards();
-  renderRoute();
+function refreshGuide() {
+  byId('spoilers').checked = hideStory;
+  renderProgress();
+  renderChecklist();
+  renderRoadmap();
 }
 
-function boot() {
-  if (window.localTrophyCatalog?.length !== 55) {
-    report('The trophy catalog could not be loaded.');
+function startGuide() {
+  if (!Array.isArray(window.localTrophyCatalog) || window.localTrophyCatalog.length !== 55) {
+    announce('The local catalog is missing. Keep data/local-catalog.js beside the guide.');
     return;
   }
-  trophies = [...window.localTrophyCatalog];
-  knownIds = new Set(trophies.map(trophy => trophy.id));
-  if (preview) {
-    document.body.dataset.shot = shot;
-    spoilers = shot === 'filters';
-    if (spoilers) get('kind').value = 'story';
-    if (shot === 'guide') trophies.sort((a, b) => Number(b.id === 17) - Number(a.id === 17));
+  catalog = [...window.localTrophyCatalog];
+  validIds = new Set(catalog.map(t => t.id));
+  if (isShot) {
+    document.body.dataset.shot = shotName;
+    hideStory = shotName === 'filters';
+    if (hideStory) byId('kind').value = 'story';
+    if (shotName === 'guide') catalog.sort((a, b) => Number(b.id === 17) - Number(a.id === 17));
   } else {
     try {
-      const previous = localStorage.getItem(storageKey);
-      if (previous) restore(JSON.parse(previous));
+      const saved = localStorage.getItem(progressKey);
+      if (saved) applySnapshot(JSON.parse(saved));
     } catch {
-      report('Saved progress is unavailable. You can import a backup.');
+      announce('Saved progress could not be read. Import a backup if you have one.');
     }
   }
-
-  get('search').addEventListener('input', renderCards);
-  get('kind').addEventListener('change', renderCards);
-  get('grade').addEventListener('change', renderCards);
-  get('spoilers').addEventListener('change', event => {
-    spoilers = event.currentTarget.checked;
-    save();
-    redraw();
+  byId('search').addEventListener('input', renderChecklist);
+  byId('kind').addEventListener('change', renderChecklist);
+  byId('grade').addEventListener('change', renderChecklist);
+  byId('spoilers').addEventListener('change', event => {
+    hideStory = event.currentTarget.checked;
+    persistProgress();
+    refreshGuide();
   });
-  get('checklist').addEventListener('click', () => showRoadmap(false));
-  get('roadmap').addEventListener('click', () => showRoadmap(true));
-  get('route-link').addEventListener('click', () => {
-    showRoadmap(true);
-    get('roadmap').focus();
+  byId('checklist').addEventListener('click', () => selectRoadmap(false));
+  byId('roadmap').addEventListener('click', () => selectRoadmap(true));
+  byId('route-link').addEventListener('click', () => {
+    selectRoadmap(true);
+    byId('roadmap').focus();
   });
-  get('export').addEventListener('click', exportProgress);
-  get('import').addEventListener('click', () => get('backup-file').click());
-  get('backup-file').addEventListener('change', importProgress);
-  redraw();
-  showRoadmap(shot === 'roadmap');
+  byId('export').addEventListener('click', exportBackup);
+  byId('import').addEventListener('click', () => byId('backup-file').click());
+  byId('backup-file').addEventListener('change', importBackup);
+  refreshGuide();
+  selectRoadmap(shotName === 'roadmap');
   requestAnimationFrame(() => requestAnimationFrame(() => { window.__shotReady = true; }));
 }
 
-boot();
+startGuide();

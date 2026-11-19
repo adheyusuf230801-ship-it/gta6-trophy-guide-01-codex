@@ -21,14 +21,14 @@
       <div>
         <p class="label">GRAND THEFT AUTO VI</p>
         <h1>Road to <em>Platinum</em></h1>
-        <p>Track every trophy across Leonida.</p>
+        <p>Your field guide to all 55 trophies.</p>
       </div>
-      <div class="meter">
+      <section class="meter" aria-label="Saved trophy progress">
         <p class="label">PLATINUM PROGRESS <span id="percent">0%</span></p>
         <p id="progress" aria-live="polite">0 of 55 earned</p>
         <progress id="bar" max="55" value="0" aria-label="Trophies earned"></progress>
         <p class="grades"><span class="platinum">1 Platinum</span><span class="gold">2 Gold</span><span class="silver">6 Silver</span><span class="bronze">46 Bronze</span></p>
-      </div>
+      </section>
     </header>
     <div class="toolbar">
       <nav aria-label="Guide sections">
@@ -57,28 +57,30 @@
         <aside class="route-peek">
           <h2>Platinum route</h2>
           <ol>
-            <li>Story <small>Chapters 1–4 and finale</small></li>
-            <li>Strangers <small>8 complete strands</small></li>
-            <li>Activities <small>250 stunts · 20 race wins</small></li>
+            <li>Story <small>Chapters 1–4 → finale</small></li>
+            <li>Strangers <small>8 completed strands</small></li>
+            <li>Activities <small>250 stunts · 20 different race wins</small></li>
             <li>Collectibles <small>3 card sets · 100 WAiNK locations</small></li>
-            <li>Cleanup <small>100% in-game completion</small></li>
+            <li>Cleanup <small>100% game completion → platinum</small></li>
           </ol>
           <button id="route-link" type="button">See route &amp; warnings →</button>
+          <p class="evidence-note">Advice grounded in the supplied PS5 list. Unconfirmed triggers are labeled; no invented locations or replay promises.</p>
         </aside>
       </div>
     </section>
     <section id="route-view" class="route-columns" aria-label="Roadmap and missables" hidden>
       <section>
         <h2>Platinum roadmap</h2>
+        <p class="route-note">A planning order from the official descriptions. Watch for one-time cues throughout the story.</p>
         <ol id="stages"></ol>
       </section>
       <section>
         <h2>Missable watchlist <span id="risk-count" class="label"></span></h2>
-        <p class="route-note">Start watching for these cues as soon as they appear. The trophy list does not give a confirmed unlock order or replay rules.</p>
+        <p class="route-note">Conservative warnings, ordered by cue priority. First availability and chapter placement are unconfirmed; start watching from your first decision or matching encounter. Keep earlier saves where allowed.</p>
         <div id="warnings"></div>
       </section>
     </section>
-    <noscript><p>Enable JavaScript to use the trophy tracker.</p></noscript>
+    <noscript><p>Enable JavaScript to read the catalog and save trophy progress.</p></noscript>
   </main>
   <footer class="wrap">LEONIDA AFTER DARK · UNOFFICIAL PS5 TROPHY GUIDE</footer>
 </body>

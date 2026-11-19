@@ -109,17 +109,14 @@ input[type="checkbox"] { accent-color: var(--mint); width: 18px; height: 18px; m
 .columns { grid-template-columns: minmax(0, 1fr) 285px; margin-top: 15px; }
 .route-columns { grid-template-columns: 1fr 1fr; }
 .section-head, .route-columns h2 { margin-bottom: 10px; }
-.route-peek, .trophy, #stages li, .warning {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-}
+.route-peek, .trophy, #stages li, .warning { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
 .route-peek { padding: 16px; }
 .route-peek ol { margin: 12px 0; padding-left: 1.5rem; }
 .route-peek li { padding: 5px 0 5px 4px; font-weight: 710; }
 .route-peek li::marker { color: var(--pink); }
-small { color: var(--muted); font-weight: 450; }
 .route-peek small { display: block; }
+small, .evidence-note { color: var(--muted); font-weight: 450; }
+.evidence-note { font-size: .79rem; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 12px; }
 .trophy { padding: 11px 14px; margin-bottom: 7px; }
 .trophy.earned { border-color: #407969; }
 .trophy-line { display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: 11px; }
@@ -131,12 +128,13 @@ details { margin-left: 29px; margin-top: 2px; }
 summary { width: fit-content; color: var(--mint); font-size: .87rem; font-weight: 710; }
 details[open] { margin-top: 8px; }
 .guide { margin-top: 6px; }
-.source { color: var(--muted); font-size: .83rem; margin-top: 6px; }
+.source { color: var(--muted); font-size: .83rem; margin-top: 6px; overflow-wrap: anywhere; }
 #stages { margin: 0; padding-left: 1.6rem; }
 #stages li { padding: 10px 13px; margin-bottom: 8px; }
 #stages li::marker { color: var(--pink); font-weight: 850; }
 #stages p, .warning p { color: var(--muted); margin-top: 4px; }
 .route-note { margin-bottom: 10px; }
+.stage-warning { border-left: 2px solid var(--pink); padding-left: 8px; font-size: .86rem; }
 .warning { padding: 9px 12px; margin-bottom: 7px; }
 .warning h3 { display: flex; justify-content: space-between; gap: 8px; }
 .warning button { margin-top: 6px; padding: 3px 8px; }
