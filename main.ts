@@ -1,24 +1,25 @@
-// Package the offline guide and the browser captures for the make.fun dossier.
-//   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
-
-import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { cpSync, mkdirSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { buildDossier } from './vendor/makefun-frontend.ts';
 
-const here = fileURLToPath(new URL('.', import.meta.url));
-const outputDirectory = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const repository = import.meta.dirname;
+const submissionFolders = ['app', 'screenshots'] as const;
+const limits = {
+  text_max_bytes: 160 * 1024,
+  screenshots: { max: 4, max_bytes: 256 * 1024 },
+  app_max_files: 993,
+  app_max_bytes: 48 * 1024 * 1024,
+};
 
-mkdirSync(outputDirectory, { recursive: true });
-cpSync(join(here, 'app'), join(outputDirectory, 'app'), { recursive: true });
-mkdirSync(join(outputDirectory, 'screenshots'), { recursive: true });
-if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), join(outputDirectory, 'screenshots'), { recursive: true });
+function stageSubmission(destination: string) {
+  mkdirSync(destination, { recursive: true });
+  for (const folder of submissionFolders) {
+    cpSync(resolve(repository, folder), resolve(destination, folder), { recursive: true });
+  }
+}
 
-// The scorer's own caps (reference/gate.json): only text_max_bytes shapes the bytes; the others refuse an entry the
-// scorer would refuse (more than 4 screenshots or one over 256 KiB; more than 993 files and directories in app/ or
-// 48 MiB of app files: app/ counts beside /output's own 1000-entry cap, its screenshots/ and dossier.json).
-const dossierFile = join(outputDirectory, 'dossier.json');
-writeFileSync(
-  dossierFile,
-  buildDossier(outputDirectory, { text_max_bytes: 163840, screenshots: { max: 4, max_bytes: 262144 }, app_max_files: 993, app_max_bytes: 50331648 }),
-);
+const destination = resolve(process.env.MAKEFUN_OUTPUT_DIR ?? '/output');
+stageSubmission(destination);
+// The dossier describes the staged bytes, including the original screenshots.
+const dossier = buildDossier(destination, limits);
+writeFileSync(resolve(destination, 'dossier.json'), dossier);
