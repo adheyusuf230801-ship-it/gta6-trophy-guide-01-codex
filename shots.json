@@ -1,18 +1,1 @@
-[
-  {
-    "name": "1-checklist.jpg",
-    "query": "?shot=checklist"
-  },
-  {
-    "name": "2-guide.jpg",
-    "query": "?shot=guide"
-  },
-  {
-    "name": "3-roadmap.jpg",
-    "query": "?shot=roadmap"
-  },
-  {
-    "name": "4-filters.jpg",
-    "query": "?shot=filters"
-  }
-]
+[{"name": "1-checklist.jpg", "query": "?shot=checklist"}, {"name": "2-guide.jpg", "query": "?shot=guide"}, {"name": "3-roadmap.jpg", "query": "?shot=roadmap"}, {"name": "4-filters.jpg", "query": "?shot=filters"}]
